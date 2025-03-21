@@ -3,7 +3,7 @@ import requests
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from .env file (only for local development)
+# Load environment variables from .env file (for local development)
 load_dotenv()
 
 app = Flask(__name__)
@@ -19,11 +19,11 @@ def relay_message():
         # Get message from WhatsApp bot
         message_data = request.get_json()
         
-        # Format message as text (customize as needed)
+        # Format message as text
         if isinstance(message_data, str):
-            telegram_message = f"📱 *WhatsApp Message:*\n\n{message_data}"
+            telegram_message = f"📱 WhatsApp Message:\n\n{message_data}"
         else:
-            telegram_message = f"📱 *WhatsApp Message:*\n\n{str(message_data)}"
+            telegram_message = f"📱 WhatsApp Message:\n\n{str(message_data)}"
         
         # Send directly to Telegram using the Bot API
         telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -49,7 +49,11 @@ def relay_message():
 def health_check():
     return jsonify({"status": "healthy"})
 
-# The following block is only needed for local development
-# Vercel will ignore this when deployed
+# Make sure Vercel doesn't require authentication for the API
+@app.route('/.well-known/vercel-user-meta', methods=['GET'])
+def vercel_meta():
+    return jsonify({"authenticated": True})
+
+# For local development
 if __name__ == '__main__':
     app.run(debug=True)
