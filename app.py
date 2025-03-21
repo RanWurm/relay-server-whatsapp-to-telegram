@@ -11,10 +11,10 @@ load_dotenv()
 app = Flask(__name__)
 
 # Telegram credentials
-API_ID = int(os.environ.get('API_ID', '22935739'))
-API_HASH = os.environ.get('API_HASH', '2a6f2e37eb96281a4d8c3e4d9ff7104d')
-SESSION_NAME = os.environ.get('SESSION_NAME', 'Kobe_Shay')
-TARGET_CHAT = os.environ.get('TARGET_CHAT', '@PikoPaco')
+API_ID = int(os.environ.get('API_ID'))
+API_HASH = os.environ.get('API_HASH')
+SESSION_NAME = os.environ.get('SESSION_NAME')
+TARGET_CHAT = os.environ.get('TARGET_CHAT')
 
 # Global client instance
 client = None
