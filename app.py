@@ -1,45 +1,66 @@
 from flask import Flask, request, jsonify
-import requests
 import os
 from dotenv import load_dotenv
+from telethon import TelegramClient
+import asyncio
+import threading
 
-# Load environment variables from .env file (only for local development)
+# Load environment variables from .env file (for local development)
 load_dotenv()
 
 app = Flask(__name__)
 
-# Telegram credentials from environment variables
-TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
-TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
+# Telegram credentials
+API_ID = int(os.environ.get('API_ID', '22935739'))
+API_HASH = os.environ.get('API_HASH', '2a6f2e37eb96281a4d8c3e4d9ff7104d')
+SESSION_NAME = os.environ.get('SESSION_NAME', 'Kobe_Shay')
+TARGET_CHAT = os.environ.get('TARGET_CHAT', '@PikoPaco')
+
+# Global client instance
+client = None
+loop = None
+
+# Initialize Telethon client
+def init_client():
+    global client, loop
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
+    client = TelegramClient(SESSION_NAME, API_ID, API_HASH, loop=loop)
+    
+    # Start the client
+    loop.run_until_complete(client.connect())
+    if not loop.run_until_complete(client.is_user_authorized()):
+        print("WARNING: User is not authorized. You need to run this locally first to authorize.")
+    
+    print("Telethon client initialized")
+    
+    # Keep the loop running
+    threading.Thread(target=loop.run_forever, daemon=True).start()
+
+# Start the client when the app initializes
+init_client()
 
 @app.route('/relay', methods=['POST'])
 def relay_message():
-    """Simple endpoint that forwards WhatsApp messages directly to Telegram"""
+    """Simple endpoint that forwards WhatsApp messages to Telegram using Telethon"""
     try:
         # Get message from WhatsApp bot
         message_data = request.get_json()
         
-        # Format message as text (customize as needed)
+        # Format message as text
         if isinstance(message_data, str):
-            telegram_message = f"📱 *WhatsApp Message:*\n\n{message_data}"
+            telegram_message = f"📱 WhatsApp Message:\n\n{message_data}"
         else:
-            telegram_message = f"📱 *WhatsApp Message:*\n\n{str(message_data)}"
+            telegram_message = f"📱 WhatsApp Message:\n\n{str(message_data)}"
         
-        # Send directly to Telegram using the Bot API
-        telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        telegram_params = {
-            'chat_id': TELEGRAM_CHAT_ID,
-            'text': telegram_message,
-            'parse_mode': 'Markdown'
-        }
+        # Use the global loop to schedule the message sending
+        asyncio.run_coroutine_threadsafe(
+            client.send_message(TARGET_CHAT, telegram_message),
+            loop
+        )
         
-        response = requests.post(telegram_url, json=telegram_params)
-        
-        # Return response
-        if response.status_code == 200:
-            return jsonify({"success": True})
-        else:
-            return jsonify({"error": f"Telegram API error: {response.text}"}), 500
+        return jsonify({"success": True, "message": "Message forwarded to Telegram"})
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -47,9 +68,11 @@ def relay_message():
 # Health check endpoint
 @app.route('/', methods=['GET'])
 def health_check():
-    return jsonify({"status": "healthy"})
+    return jsonify({
+        "status": "healthy", 
+        "client_connected": client.is_connected() if client else False
+    })
 
-# The following block is only needed for local development
-# Vercel will ignore this when deployed
+# For local development
 if __name__ == '__main__':
     app.run(debug=True)
