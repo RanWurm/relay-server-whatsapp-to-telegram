@@ -1,10 +1,6 @@
 from flask import Flask, request, jsonify
 import requests
 import os
-from dotenv import load_dotenv
-
-# Load environment variables from .env file (for local development)
-load_dotenv()
 
 app = Flask(__name__)
 
@@ -25,7 +21,7 @@ def relay_message():
         else:
             telegram_message = f"📱 WhatsApp Message:\n\n{str(message_data)}"
         
-        # Send directly to Telegram using the Bot API
+        # Send to Telegram using the Bot API
         telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
         telegram_params = {
             'chat_id': TELEGRAM_CHAT_ID,
@@ -34,26 +30,14 @@ def relay_message():
         }
         
         response = requests.post(telegram_url, json=telegram_params)
-        
-        # Return response
-        if response.status_code == 200:
-            return jsonify({"success": True})
-        else:
-            return jsonify({"error": f"Telegram API error: {response.text}"}), 500
+        return jsonify({"success": True})
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# Health check endpoint
 @app.route('/', methods=['GET'])
 def health_check():
     return jsonify({"status": "healthy"})
 
-# Make sure Vercel doesn't require authentication for the API
-@app.route('/.well-known/vercel-user-meta', methods=['GET'])
-def vercel_meta():
-    return jsonify({"authenticated": True})
-
-# For local development
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))
